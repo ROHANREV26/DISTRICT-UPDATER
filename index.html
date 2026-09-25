@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DISTRICT UPDATED BY ROHAN SHARMA</title>
+<title>DISTRICT UPDATER BY ROHAN SHARMA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -86,6 +86,11 @@ select.dist.pdf{background-color:#e3e8ee}
 select.dist.pending{background-color:var(--sun)}
 select.dist.synced{background-color:var(--mint)}
 .tag{font-size:10px;font-weight:800;letter-spacing:.04em;white-space:nowrap}
+.custom-in{flex:1;min-width:0;border:2px solid var(--ink);border-radius:9px;padding:7px 10px;font-weight:700;text-transform:uppercase;font-size:13px}
+.mini-btn{width:32px;height:32px;flex:none;display:grid;place-items:center;border:2px solid var(--ink);border-radius:8px;background:var(--paper);cursor:pointer;font-weight:800;font-size:15px;line-height:1;padding:0}
+.mini-btn:hover{background:var(--mist)}
+.mini-btn.ok{background:var(--mint)}
+.mini-btn.no{background:#ffb4b4}
 
 /* empty state */
 .drop{margin:auto;max-width:560px;text-align:center;padding:38px 26px;border:3px dashed var(--ink);border-radius:18px;background:var(--paper)}
@@ -248,7 +253,7 @@ table.rep td{padding:8px 10px;font-size:13px}
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var DISTRICTS = ['JAMMU', 'KATHUA', 'SAMBA', 'UDHAMPUR', 'REASI', 'DODA', 'KISHTWAR', 'RAMBAN', 'RAJOURI', 'POONCH'];
+  var DISTRICTS = ['JAMMU', 'KATHUA', 'SAMBA', 'UDHAMPUR', 'REASI', 'DODA', 'KISHTWAR', 'RAMBAN', 'RAJOURI', 'POONCH', 'FCR', 'CSR'];
 
   // Column edges (S.No | Case No | Parties | File No | Remarks) measured on the sample list,
   // used only if the PDF has no drawn cell borders to read the edges from.
@@ -583,9 +588,39 @@ table.rep td{padding:8px 10px;font-size:13px}
     var d = distOf(e), st = statusOf(e), other = (!d && e.remarksRaw) ? e.remarksRaw : '';
     var opts = '<option value=""' + (!d && !other ? ' selected' : '') + '>\u2014</option>';
     if (other) opts += '<option value="__raw" selected>' + esc(other) + '</option>';
+    var isCustom = d && DISTRICTS.indexOf(d) < 0;
+    if (isCustom) opts += '<option value="' + esc(d) + '" selected>' + esc(d) + '</option>';
     DISTRICTS.forEach(function (x) { opts += '<option value="' + x + '"' + (x === d ? ' selected' : '') + '>' + x + '</option>'; });
+    opts += '<option value="__custom">+ Add custom\u2026</option>';
     var tag = st === 'pdf' ? 'IN PDF' : st === 'pending' ? 'TO SYNC' : st === 'synced' ? 'SYNCED' : '';
     return '<div class="dwrap"><select class="dist ' + st + '" aria-label="District for ' + esc(e.caseType + ' ' + e.caseNo) + '">' + opts + '</select><span class="tag">' + tag + '</span></div>';
+  }
+  function redrawRow(e) {
+    list.entries.forEach(function (x) {
+      if (x.key !== e.key) return;
+      var td = document.querySelector('tr[data-id="' + x.id + '"] td.c-district');
+      if (td) td.innerHTML = selectHtml(x);
+    });
+  }
+  function promptCustom(sel) {
+    var tr = sel.closest('tr'), e = byId[tr.getAttribute('data-id')], wrap = sel.closest('.dwrap');
+    var cur = distOf(e), isCustom = cur && DISTRICTS.indexOf(cur) < 0;
+    wrap.innerHTML = '<input type="text" class="custom-in" maxlength="40" placeholder="Type anything" value="' + esc(isCustom ? cur : '') + '" aria-label="Custom district for ' + esc(e.caseType + ' ' + e.caseNo) + '">' +
+      '<button class="mini-btn ok" title="Save" aria-label="Save">\u2713</button><button class="mini-btn no" title="Cancel" aria-label="Cancel">\u2715</button>';
+    var inp = wrap.querySelector('.custom-in');
+    function commit() {
+      var v = inp.value.trim().toUpperCase();
+      if (!v) { redrawRow(e); return; }
+      if (/^[=+\-@]/.test(v)) { toast('That value can\u2019t start with = + - or @.'); return; }
+      setDistrict(e, v);
+    }
+    wrap.querySelector('.ok').onclick = commit;
+    wrap.querySelector('.no').onclick = function () { redrawRow(e); };
+    inp.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); redrawRow(e); }
+    });
+    inp.focus(); inp.select();
   }
   function rowHtml(e) {
     return '<tr class="entry" data-id="' + e.id + '">' +
@@ -938,6 +973,7 @@ table.rep td{padding:8px 10px;font-size:13px}
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && popAnchor) closePop(); });
   $('#gridwrap').addEventListener('change', function (ev) {
     var sel = ev.target.closest && ev.target.closest('select.dist'); if (!sel) return;
+    if (sel.value === '__custom') { promptCustom(sel); return; }
     var tr = sel.closest('tr'), e = byId[tr.getAttribute('data-id')];
     if (sel.value === '__raw') return;
     setDistrict(e, sel.value);
