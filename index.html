@@ -551,7 +551,7 @@ table.rep td{padding:8px 10px;font-size:13px}
     var seen = {}, out = [];
     if (!list) return out;
     list.entries.forEach(function (e) {
-      if (statusOf(e) === 'pending' && DISTRICTS.indexOf(over[e.key].d) >= 0 && !seen[e.key]) { seen[e.key] = 1; out.push(e); }
+      if (statusOf(e) === 'pending' && !seen[e.key]) { seen[e.key] = 1; out.push(e); }
     });
     return out;
   }
